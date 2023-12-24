@@ -1,0 +1,21 @@
+program
+begin
+    a, b, c: integer;
+    x, y: real;
+    flag: boolean;
+	flag:=true;
+    a := 5;
+    b := 10;
+
+    while a < b and a <= 10:
+        a := 11;
+    else
+        b := 10;
+
+    while a < b or flag:
+        a := 5;
+    else
+        b := 3;
+
+end
+.

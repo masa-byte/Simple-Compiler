@@ -1,0 +1,52 @@
+-class OR
+OR(a, b)
+
+Load_Mem R1, a
+Load_Mem R2, b
+Or R1, R2
+Store R1, $tmp
+
+-class AND
+AND(a, b)
+
+Load_Mem R1, a
+Load_Mem R2, b
+And R1, R2
+Store R1, $tmp
+
+-class EQ
+EQ(a, b)
+
+Load_Mem R1, a
+Load_Mem R2, b
+Compare_Equal R1, R2
+Store R1, $tmp
+
+-class LESS
+LESS(a, b)
+
+Load_Mem R1, a
+Load_Mem R2, b
+Compare_Less R1, R2
+Store R1, $tmp
+
+-class GREATER
+GREATER(a, b)
+
+Load_Mem R1, a
+Load_Mem R2, b
+Compare_Greater R1, R2
+Store R1, $tmp
+
+-class WhileLoop
+WhileLoop(cond, loopBody, else)
+
+Label $loop
+Load_Mem R1, cond
+JumpIfZero R1, $else
+// additional code in loopBody
+Jump $loop
+
+Label $else
+// additional code in else
+

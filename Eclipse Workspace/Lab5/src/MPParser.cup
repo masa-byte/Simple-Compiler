@@ -1,0 +1,286 @@
+// import sekcija
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.ArrayList;
+import java_cup.runtime.Scanner;
+
+import SymbolTable.*; 
+import AST.*;
+
+
+parser code {:
+
+   SymbolTable symbolTable;
+   String relOp;
+	
+   public static void main( String[] args )
+   {
+      try
+	  {
+           String filename = "testinput.txt";
+           String fullPath = System.getProperty("user.dir") + File.separator + "src" + File.separator + filename;
+		   FileReader file = new FileReader( fullPath );
+		   Scanner scanner = new MPLexer( file );
+		   MPParser parser = new MPParser( scanner );
+		   parser.parse();
+	  }
+	  catch( Exception e )
+	  {
+		   e.printStackTrace();
+	  }
+   }
+
+   public void setRelOp( String op )
+   {
+	   relOp = op;
+   }
+
+   public String getRelOp()
+   {
+	   String relOp = this.relOp;
+	   this.relOp = null;
+	   return relOp;
+   }
+:};
+
+init with {:
+	symbolTable = new SymbolTable();
+	relOp = null;
+:}
+
+//Terminali
+terminal WHILE, ELSE, OR, AND, PROGRAM, INTEGER, CHAR, REAL, BOOLEAN, BEGIN, END;
+terminal LEFTPAR, RIGHTPAR, COLON, ASSIGN, SEMICOLON, COMMA, DOT, LESS, LESS_EQ, GREATER, GREATER_EQ, EQ, NOT_EQ;
+terminal String ID;
+terminal Integer INTCONST;
+terminal Double REALCONST;
+terminal Character CHARCONST;
+terminal Boolean BOOLCONST;
+
+//Neterminali
+non terminal Variables, Declaration, RelOp;
+non terminal Block Program, _Block, StatementList;
+non terminal Statement _Statement;
+non terminal WhileLoop _WhileLoop;
+non terminal Expression _Expression, AndExpression, RelExpression, Term;
+non terminal Type _Type;
+non terminal ArrayList NameList;
+non terminal Constant Const;
+
+
+//Gramatika
+Program ::= PROGRAM _Block:b DOT
+		{:
+		   System.out.println( "Redukcija 1: Program ::= program Block ." );
+		   RESULT = b;
+		:}
+		;
+
+_Block ::= BEGIN Variables StatementList:sl END
+		{:
+		   System.out.println( "Redukcija 2: Block ::= begin Variables StatementList end" );
+		   RESULT = sl;
+		:}
+		;
+
+Variables ::= Variables Declaration
+		{:
+		   System.out.println( "Redukcija 3: Variables ::= Variables Declaration" );
+		:}
+		|
+		{:
+		   System.out.println( "Redukcija 4: Variables ::= epsilon" );
+		:}
+		;
+
+Declaration ::= NameList:arr COLON _Type:t SEMICOLON
+		{:
+		   System.out.println( "Redukcija 5: Declaration ::= NameList : Type ;" );
+		   for (int i = 0; i < arr.size(); i++)
+		   {
+			   String name = (String) arr.get(i);
+			   parser.symbolTable.addVar( name, t );
+		   }
+		:}
+		;
+
+NameList ::= NameList:arr COMMA ID:id
+		{:
+		   System.out.println( "Redukcija 6: NameList ::= NameList , ID" );
+		   RESULT = arr;
+		   RESULT.add( id );
+		:}
+		| ID:id
+		{:
+		   System.out.println( "Redukcija 7: NameList ::= ID" );
+		   RESULT = new ArrayList();
+		   RESULT.add( id );
+		:}
+		;
+
+
+_Type ::= INTEGER
+		{:
+		   System.out.println( "Redukcija 8: Type ::= integer" );
+		   RESULT = parser.symbolTable.getType("integer");
+		:}
+		| CHAR
+		{:
+		   System.out.println( "Redukcija 9: Type ::= char" );
+		   RESULT = parser.symbolTable.getType("char");
+		:}
+		| REAL
+		{:
+		   System.out.println( "Redukcija 10: Type ::= real" );
+		   RESULT = parser.symbolTable.getType("real");
+		:}
+		| BOOLEAN
+		{:
+		   System.out.println( "Redukcija 11: Type ::= boolean" );
+		   RESULT = parser.symbolTable.getType("boolean");
+		:}
+		;
+
+StatementList ::= _Statement:s
+		{:
+		   System.out.println( "Redukcija 12: StatementList ::= Statement" );
+		   RESULT = new Block();
+		   RESULT.addStatement( s );
+		:}
+		| StatementList:sl _Statement:s 
+		{:
+		   System.out.println( "Redukcija 13: StatementList ::= StatementList Statement" );
+		   RESULT = sl;
+		   RESULT.addStatement( s );
+		:}
+		;
+
+_Statement ::= _WhileLoop:wl
+		{:
+		   System.out.println( "Redukcija 14: Statement ::= WhileLoop" );
+		   RESULT = wl;
+		:}
+		| ID:id ASSIGN _Expression:ex SEMICOLON
+		{:
+		   System.out.println( "Redukcija 15: Statement ::= ID := Expression ;" );
+		   Variable var = parser.symbolTable.getVar( id );
+		   RESULT = new Assignment( var, ex );
+		:}
+		| _Block:b
+		{:
+		   System.out.println( "Redukcija 16: Statement ::= Block" );
+		   RESULT = b;
+		:}
+		;
+
+_WhileLoop ::= WHILE _Expression:ex COLON _Statement:s1 ELSE _Statement:s2
+		{:
+		   System.out.println( "Redukcija 17: WhileLoop ::= while Expression : Statement else Statement" );
+		   RESULT = new WhileLoop( ex, s1, s2 );
+		:}
+		;
+
+_Expression ::= _Expression:ex1 OR AndExpression:ex2
+		{:
+		   System.out.println( "Redukcija 18: Expression ::= Expression or AndExpression" );
+		   RESULT = new OR( ex1, ex2 );
+		:}
+		| AndExpression:ex
+		{:
+		   System.out.println( "Redukcija 19: Expression ::= AndExpression" );
+		   RESULT = ex;
+		:}
+		;
+
+AndExpression ::= AndExpression:ex1 AND RelExpression:ex2
+		{:
+		   System.out.println( "Redukcija 20: AndExpression ::= AndExpression and RelExpression" );
+		   RESULT = new AND( ex1, ex2 );
+		:}
+		| RelExpression:ex
+		{:
+		   System.out.println( "Redukcija 21: AndExpression ::= RelExpression" );
+		   RESULT = ex;
+		:}
+		;
+
+RelExpression ::= Term:t1 RelOp Term:t2
+		{:
+		   System.out.println( "Redukcija 22: RelExpression ::= Term RelOp Term" );
+		   switch ( parser.getRelOp() )
+		   {
+			   case "LESS_EQ": {
+				Expression temp1 = new LESS( t1, t2 );
+				Expression temp2 = new EQ( t1, t2 );
+				RESULT = new OR( temp1, temp2 );
+				break;
+			   }
+			   case "GREATER_EQ": {
+				Expression temp1 = new GREATER( t1, t2 );
+				Expression temp2 = new EQ( t1, t2 );
+				RESULT = new OR( temp1, temp2 );
+				break;
+			   }
+			   case "EQ": RESULT = new EQ( t1, t2 ); break;
+		   }
+		:}
+		| Term:t1
+		{:
+		   System.out.println( "Redukcija 23: RelExpression ::= Term" );
+		   RESULT = t1;
+		:}
+		;
+
+RelOp ::= LESS_EQ
+		{:
+		   System.out.println( "Redukcija 25: RelOp ::= <=" );
+		   parser.setRelOp( "LESS_EQ" );
+		:}
+		| EQ
+		{:
+		   System.out.println( "Redukcija 26: RelOp :: ==" );
+		   parser.setRelOp( "EQ" );
+		:}
+		| GREATER_EQ
+		{:
+		   System.out.println( "Redukcija 29: RelOp ::= >=" );
+		   parser.setRelOp( "GREATER_EQ" );
+		:}
+		;
+
+Term ::= ID:id
+		{:
+		   System.out.println( "Redukcija 30: Term ::= ID" );
+		   Variable var = parser.symbolTable.getVar( id );
+		   RESULT = new VariableExpression( var );
+		:}
+		| Const:c
+		{:
+		   System.out.println( "Redukcija 31: Term ::= CONST" );
+		   RESULT = new ConstantExpression( c );
+		:}
+		| LEFTPAR _Expression:ex RIGHTPAR
+		{:
+		   System.out.println( "Redukcija 32: Term ::= ( Expression )" );
+		   RESULT = ex;
+		:}
+		;
+			
+Const ::= INTCONST:c
+        {:
+            RESULT = new Constant( parser.symbolTable.getType("integer"), c );
+        :}
+        | REALCONST:c
+        {:
+            RESULT = new Constant( parser.symbolTable.getType("real"), c );
+        :}
+        | CHARCONST:c
+        {:
+            RESULT = new Constant( parser.symbolTable.getType("char"), c );
+        :}
+        | BOOLCONST:c
+        {:
+            RESULT = new Constant( parser.symbolTable.getType("boolean"), c );
+        :}
+        ;

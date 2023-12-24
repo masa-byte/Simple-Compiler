@@ -1,0 +1,6 @@
+program
+begin
+    x: integer;
+    x := "a";
+end
+.

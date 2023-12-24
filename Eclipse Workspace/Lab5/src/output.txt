@@ -1,0 +1,60 @@
+	Load_Const	R1, true
+	Store		R1, flag
+	Load_Const	R1, 5
+	Store		R1, a
+	Load_Const	R1, 10
+	Store		R1, b
+lab0:
+	Load_Mem	R1, a
+	Load_Mem	R2, b
+	Compare_Less		R1, R2
+	Store		R1, $tmp0
+	Load_Mem	R1, a
+	Load_Mem	R2, b
+	Compare_Equal		R1, R2
+	Store		R1, $tmp1
+	Load_Mem	R1, $tmp0
+	Load_Mem	R2, $tmp1
+	Or		R1, R2
+	Store		R1, $tmp2
+	Load_Mem	R1, $tmp2
+	Load_Mem	R2, flag
+	And		R1, R2
+	Store		R1, $tmp3
+	Load_Mem	R1, $tmp3
+	JumpIfZero	R1, lab1
+	Load_Const	R1, 11
+	Store		R1, a
+	Jump	lab0
+lab1:
+	Load_Const	R1, 10
+	Store		R1, b
+lab2:
+	Load_Const	R1, false
+	Store		R1, flag
+lab3:
+	Load_Mem	R1, a
+	Load_Mem	R2, b
+	Compare_Greater		R1, R2
+	Store		R1, $tmp4
+	Load_Mem	R1, a
+	Load_Mem	R2, b
+	Compare_Equal		R1, R2
+	Store		R1, $tmp5
+	Load_Mem	R1, $tmp4
+	Load_Mem	R2, $tmp5
+	Or		R1, R2
+	Store		R1, $tmp6
+	Load_Mem	R1, $tmp6
+	Load_Mem	R2, flag
+	Or		R1, R2
+	Store		R1, $tmp7
+	Load_Mem	R1, $tmp7
+	JumpIfZero	R1, lab4
+	Load_Const	R1, 5
+	Store		R1, a
+	Jump	lab3
+lab4:
+	Load_Const	R1, 3
+	Store		R1, b
+lab5:
