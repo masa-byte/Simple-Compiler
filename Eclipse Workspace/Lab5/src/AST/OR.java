@@ -9,6 +9,6 @@ public class OR extends BinaryExpression {
     
     protected String opCode()
     {
-        return "Or";
+    	return "Or";
     }
 }

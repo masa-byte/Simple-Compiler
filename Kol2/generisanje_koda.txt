@@ -1,0 +1,203 @@
+struct list 
+{
+    int info;
+    struct list* next;
+}
+
+funkcija count - rezultat kroz CX
+s se nalazi na adresi 100
+
+Aktivacioni slog
+a <--- BP + 6
+head <--- BP + 4
+adresa povratka <--- BP + 2
+staro BP <--- BP
+
+kod:
+PUSH EBP
+MOV EBP, ESP
+
+MOV EAX, [EBP + 6]
+PUSH EAX
+MOV EAX, [EBP + 4]
+PUSH EAX
+CALL find
+ADD ESP, 4
+
+MOV EAX, [0100]
+ADD EAX, ECX
+STORE [0100], EAX
+
+MOV ESP, EBP
+POP EBP
+RET
+
+funkcija find
+
+Aktivacioni slog
+
+x <--- BP + 6
+l <--- BP + 4
+adresa povratka - ADD ESP, 4 <--- BP + 2
+Staro BP <--- BP
+res <--- SP <--- BP - 2
+
+info <--- offset 0
+next <--- offset 2
+
+kod:
+PUSH EBP
+MOV EBP, ESP
+SUB ESP, 2
+
+MOV EAX, [BP + 4] 
+CMP EAX, 0
+JNE lab1
+MOV [BP - 2], 0
+JMP kraj
+
+lab1:
+MOV EBX, [BP + 4]
+MOV EAX, [EBX]
+CMP EAX, [BP + 6]
+JNE lab2
+MOV [BP - 2], 1
+JMP kraj
+
+lab2:
+MOV EBX, [BP + 4]
+MOV EAX, [EBX + 2]
+PUSH EAX
+MOV EAX, [BP + 6]
+PUSH EAX
+CALL find 
+ADD ESP, 4
+STORE [BP - 2], ECX
+
+kraj:
+MOV ECX, [BP - 2]
+MOV ESP, EBP
+POP EBP
+RET
+
+
+/////////////////////////////
+
+Aktivacioni slog
+ 
+rezultat <---- BP + 6
+vr <---- BP + 4
+adresa povratka <---- BP + 2
+Staro BP <---- BP
+truth <---- BP - 2
+condition <---- BP - 4
+
+
+
+kod:
+
+PUSH EBP
+MOV EBP, ESP
+SUB ESP, 4
+
+STORE [EBP - 2], 0
+STORE [EBP - 4], 1
+
+// type
+MOV EBX, [EBP + 4]
+MOV EAX, [EBX]
+CMP EAX, 0
+JNE lab1
+
+// query_id
+MOV EAX, [EBX + 4]
+PUSH EAX
+CALL exec_query
+ADD ESP, 2
+// rez u ECX
+MOV EDX, ECX
+MOV EAX, [EBP - 4]
+MUL EDX
+MOV [EBP - 4], EAX
+
+lab1:
+// next
+MOV EBX, [EBP + 4]
+MOV EAX, [EBX + 2]
+CMP EAX, 0
+JE kraj
+
+PUSH EAX
+PUSH EAX
+CALL verify_preconditions
+ADD ESP, 2
+POP EDX
+
+MOV EAX, [EBP - 4]
+MUL EDX
+MOV [EBP - 4], EAX
+
+kraj:
+MOV EAX, [EBP - 4]
+MOV [EBP + 6], EAX
+MOV ESP, EBP
+POP EBP
+
+RET
+
+////////////////////////
+
+id -> 0
+mem_available -> 4
+alloc_container -> 8
+next -> 12
+
+Aktivacioni slog:
+rezultat <--- EBP + 20
+s <--- EBP + 16
+task_mem <--- EBP + 12
+task_id <--- EBP + 8
+adresa povratka <--- EBP + 4
+staro EBP <--- ESP, EBP
+
+
+kod:
+
+PUSH EBP
+MOV EBP, ESP
+
+MOV EBX, [EBP + 16] --- u EBX adresa s
+MOV EAX, [EBX + 4] 
+MOV EDX, [EBP + 12] --- u EDX task_mem
+CMP EDX, EAX
+JGE lab1
+SUB EAX, EDX
+MOV [EBX + 4], EAX
+MOV EAX, [EBP + 8]
+MOV [EBX + 8] , EAX
+MOV EAX, [EBX] --- u EAX s-id
+MOV [EBP + 20], EAX
+JMP KRAJ
+
+lab1:
+MOV EAX, [EBX + 12]  --- u EAX s->next
+CMP EAX, 0
+JE lab2
+PUSH EAX  --- za rezultat
+PUSH EAX
+MOV EAX, [EBP + 12]
+PUSH EAX
+MOV EAX, [EBP + 8]
+PUSH EAX
+CALL allocate 
+ADD ESP, 12
+POP EDX
+MOV [EBP + 20], EDX
+JMP KRAJ
+lab2: 
+MOV [EBP + 20], 0
+
+KRAJ:
+RET
+
+

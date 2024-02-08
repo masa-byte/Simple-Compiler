@@ -1,0 +1,169 @@
+1. CUP
+Dec → TYPE VarL ;
+VarL → Var | VarL , Var
+Var → ID | ID = CONST
+
+
+terminal SEMICOLON, COLON, ASSIGN;
+terminal INTCONST, CHARCONST, DOUBLECONST;
+terminal String ID, TYPE;
+
+non terminal Dec;
+non terminal ArrayList VarL;
+non terminal Variable Var;
+
+Dec ::= TYPE:typeName VarL:arr ;
+        {:
+            for(int i=0; i<arr.size(); i++) {
+                Variable var = arr.get(i)
+                if(var.type != -1 && var.type.tkind != parser.symbolTable.getType(typeName)) {
+                    System.out.println("Tipovi se ne poklapaju");
+                }
+            }
+        :};
+VarL ::= Var:v
+        {:
+            RESULT = new Arraylist();
+            RESULT.add(v)
+        :}
+        | VarL:arr , Var:v
+        {:
+            RESULT = arr
+            RESULT.add(v)
+        :};
+Var ::= ID:id
+        {:
+            RESULT = new Variable(id, -1, null);
+            if(!parser.symbolTable.addVar(id, parser.symbolTable.getType("unknown"))) {
+                System.out.println("Promenljiva imena " + v.name + " je vec deklarisana");
+            }
+        :}
+        | ID:id = Const:c
+        {:
+            RESULT = new Variable(id, c.type, null);
+            if(!parser.symbolTable.addVar(id, c.type)) {
+                System.out.println("Promenljiva imena " + v.name + " je vec deklarisana");
+            }
+        :};
+Const ::= INTCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("int"), c);
+        :}
+        |CHARCONST:c 
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("char"), c);
+        :}
+        |DOUBLECONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("double"), c);
+        :};
+
+2. medjukod
+
+SelectStatement → select AlternativeList end
+AlternativeList → AlternativeList or Alternative | Alternative
+Alternative → when Expression => Statement
+
+public class SelectStatement extends Statement {
+    private ArrayList<Alternative> alternatives;
+
+    public SelectStatement(ArrayList<Alternative> _alternatives) {
+        this.alternatives = _alternatives;
+    }
+
+    @Override
+    public void translate(BufferedWriter out) {
+        String nextLab = ASTNode.genLab();
+        String endLab = ASTNode.genLab();
+
+        out.write(nextLab + ":");
+        out.newLine();
+        for(Alternative a : alternatives) {
+            a.expression.translate(out);
+            a.expression.genLoad("R1", out);
+            out.write("\tJumpIfZero\t R1, " + nextLab);
+
+            if(a.expression.result != "0") {
+                a.statement.translate(out);
+                out.write("\tJump\t " + endLab);
+                break;
+            }
+        }
+
+        out.write(endLab + ":");
+        out.newLine();
+    }
+}
+
+medjukod:
+IMC<alternatives>
+IMC<alternatives[0]>
+IMC<alternatives[0].expression>
+
+JumpIfZero IMC<alternatives[0].expression>, next
+IMC<alternatives[0].statement>
+Jump end
+
+next:
+IMC<alternatives[1]>
+IMC<alternatives[1].expression>
+
+JumpIfZero IMC<alternatives[1].expression>, next
+IMC<alternatives[1].statement>
+Jump end
+
+...
+
+end:
+
+3. generisanje koda
+
+int sum(int n, int* a)
+{
+    int s, i;
+    if ( n==0 )
+    s=0;
+    else
+    s=*a + sum(n-1, a+1);
+    return s;
+}
+
+aktivacioni slog
+a <---- EBP + 12
+n <---- EBP + 8
+adresa povratka <---- EBP + 4
+staro EBP <---- EBP
+s <---- EBP - 4
+i <---- ESP <---- EBP - 8
+
+kod: 
+PUSH EBP
+MOV EBP, ESP
+SUB ESP, 8
+
+MOV EAX, [EBP + 8] 
+CMP EAX, 0
+JNE else
+MOV [EBP - 4], 0
+JMP end
+
+else: 
+MOV EBX, [EBP + 12] 
+MOV EDX, [EBX] ---- u EDX je sadrzaj gde ukazuje pointer a
+
+INC EBX 
+PUSH EBX
+DEC EAX 
+PUSH EAX 
+CALL sum 
+ADD ESP, 8
+
+MOV EAX, EDX
+ADD EAX, ECX
+MOV [EBP - 4], EAX
+JMP end
+
+end: 
+MOV ECX, [EBP - 4]
+RET
+

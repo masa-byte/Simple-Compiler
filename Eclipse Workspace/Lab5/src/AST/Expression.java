@@ -1,7 +1,6 @@
 package AST;
 import java.io.*;
 
-
 public abstract class Expression extends ASTNode{
 	
 	protected String result;

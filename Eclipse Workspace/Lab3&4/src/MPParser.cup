@@ -23,8 +23,7 @@ parser code {:
         FileReader file = new FileReader( fullPath );
         Scanner scanner = new MPLexer( file );
         MPParser parser = new MPParser( scanner );
-        parser.parse();
-		parser.checkWarnings();   
+        parser.parse(); 
 		if ( parser.errNo==0 && parser.warnNo==0 )     
 			System.out.println(  "Analiza zavrsena. U kodu nema gresaka." );   
 		else      
@@ -35,41 +34,6 @@ parser code {:
 		e.printStackTrace();
 	  }
    }
-
-	public void checkWarnings()
-	{
-		SymbolNode current = symbolTable.getVariables();
-		while ( current != null )
-		{
-			Variable var = ( Variable ) current;
-			if ( var.last_def == -1 && var.last_use == -1 )
-			{
-				System.out.println("Upozorenje: Promenljiva " + var.name + "je deklarisana, ali se ne koristi.");
-				warnNo++;
-			}
-			else if ( var.last_def > var.last_use )
-			{
-				System.out.println("Upozorenje: Vrednost dodeljena prom. " + var.name + " u liniji " + var.last_def + " se nigde ne koristi." );
-				warnNo++;
-			}		
-			current = current.next;
-		}
-	}
-
-    public void syntax_error(Symbol cur_token)
-    {
-        
-    }
-   
-    public void report_error(String message, Object info)
-    {
-        System.out.print( message );
-    }
-    
-    public int getLine()
-    {
-        return (( MPLexer) getScanner()).getLine();
-    }
 :};
 
 init with {:
@@ -99,37 +63,9 @@ precedence nonassoc error;	// Inserted by Eclipse plugin
 
 //Gramatika
 Program ::= PROGRAM Block DOT
-        | PROGRAM Block error
-        {:
-            System.out.println( "Nedostaje '.' na kraju programa" );
-            parser.errNo++;
-        :}
-        | PROGRAM error
-        {:
-            System.out.println("Greska u liniji " + parser.getLine() + ": " + 
-                "Telo programa je nekorektno.");
-            parser.errNo++;
-        :}
         ;
         
 Block ::= BEGIN Variables StatementList END
-        | BEGIN Variables StatementList error
-        {:
-            System.out.println( "Nedostaje 'end' na kraju tela programa" );
-            parser.errNo++;
-        :}
-        | BEGIN Variables error
-        {:
-            System.out.println("Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje niz naredbi.");
-            parser.errNo++;
-        :}
-        | BEGIN error
-        {:
-            System.out.println("Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje deo za definiciju promenljivih.");
-            parser.errNo++;
-        :}
         ;
         
 Variables ::= Variables Declaration
@@ -148,71 +84,12 @@ Declaration ::= NameList:arr COLON _Type:t SEMICOLON
                 }
             }
         :}
-        | NameList:arr COLON _Type:t error
-        {:
-			for ( int i = 0; i < arr.size(); i++ )
-            {
-                String name = (String) arr.get( i );
-                if (! parser.symbolTable.addVar(name, t))
-                {
-                    System.out.println("Greska u liniji " + parser.getLine() + ": " + "\nPromenljiva " + name + " je vec deklarisana.");
-                    parser.errNo++;
-                }
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje ';' na kraju.");
-            parser.errNo++;
-        :}
-        | NameList:arr COLON error
-        {:
-            Type t;
-            t = parser.symbolTable.getType("unknown");
-            for ( int i = 0; i < arr.size(); i++ )
-            {
-                String name = (String) arr.get( i );
-                if (! parser.symbolTable.addVar(name, t))
-                {
-                    System.out.println("Greska u liniji " + parser.getLine() + ": " + "\nPromenljiva " + name + " je vec deklarisana.");
-                    parser.errNo++;
-                }
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje tip promenljivih.");
-            parser.errNo++;
-        :}
-        | NameList:arr error
-        {:
-            Type t;
-            t = parser.symbolTable.getType("unknown");
-            for ( int i = 0; i < arr.size(); i++ )
-            {
-                String name = (String) arr.get( i );
-                if (! parser.symbolTable.addVar(name, t))
-                {
-                    System.out.println("Greska u liniji " + parser.getLine() + ": " + "\nPromenljiva " + name + " je vec deklarisana.");
-                    parser.errNo++;
-                }
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje ':' izmedju imena i tipa promenljivih.");
-            parser.errNo++;
-        :}
         ;
         
 NameList ::= NameList:arr COMMA ID:id
         {:
             RESULT = arr;
             RESULT.add( id );
-        :}
-        | NameList:arr COMMA error
-        {:
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje ime promenljive.");
-            parser.errNo++;
-            RESULT = arr;
         :}
         | ID:id
         {:
@@ -264,62 +141,6 @@ Statement ::= WhileLoop
                 }
             }
         :}
-        | ID:id ASSIGN Expression:ex error
-        {:
-            Variable var = parser.symbolTable.getVar( id );
-            if ( var == null )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Promenljiva " + id + " nije deklarisana." );
-                parser.errNo++;
-            }
-            else
-            {
-                var.last_def = parser.getLine();
-                if (var.type.tkind != ex.tkind)
-                {
-                    System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                        "Tipovi promenljive i izraza se ne poklapaju." );
-                    parser.errNo++;
-                }
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje ';' na kraju.");
-            parser.errNo++;
-        :}
-        | ID:id ASSIGN error
-        {:
-            Variable var = parser.symbolTable.getVar( id );
-            if ( var == null )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Promenljiva " + id + " nije deklarisana." );
-                parser.errNo++;
-            }
-            else
-                var.last_def = parser.getLine();
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje izraz.");
-            parser.errNo++;
-        :}
-        | ID:id error
-        {:
-            Variable var = parser.symbolTable.getVar( id );
-            if ( var == null )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Promenljiva " + id + " nije deklarisana." );
-                parser.errNo++;
-            }
-            else
-                var.last_def = parser.getLine();
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje ':=' izmedju imena promenljive i izraza.");
-            parser.errNo++;
-        :}
         | Block
         ;
         
@@ -331,64 +152,6 @@ WhileLoop ::= WHILE Expression:ex COLON Statement ELSE Statement
                     "Uslov petlje mora biti tipa boolean." );
                 parser.errNo++;
             }
-        :}
-        | WHILE Expression:ex COLON Statement ELSE error
-        {:
-            if ( ex.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Uslov petlje mora biti tipa boolean." );
-                parser.errNo++;
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje naredba.");
-            parser.errNo++;
-        :}
-        | WHILE Expression:ex COLON Statement error
-        {:
-            if ( ex.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Uslov petlje mora biti tipa boolean." );
-                parser.errNo++;
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje 'else' deo.");
-            parser.errNo++;
-        :}
-        | WHILE Expression:ex COLON error
-        {:
-            if ( ex.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Uslov petlje mora biti tipa boolean." );
-                parser.errNo++;
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje naredba.");
-            parser.errNo++;
-        :}
-        | WHILE Expression:ex error
-        {:
-            if ( ex.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Uslov petlje mora biti tipa boolean." );
-                parser.errNo++;
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje ':' izmedju uslova i tela petlje.");
-            parser.errNo++;
-        :}
-        | WHILE error
-        {:
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje uslov petlje.");
-            parser.errNo++;
         :}
         ;
         
@@ -404,20 +167,6 @@ Expression ::= Expression:t1 OR AndExpression:t2
                 System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
                     "Desni operand nije tipa boolean." );
             }
-            RESULT = parser.symbolTable.getType("boolean");
-        :}
-        | Expression:t1 OR error
-        {:
-            if ( t1.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Levi operand nije tipa boolean." );
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje izraz.");
-            parser.errNo++;
-
             RESULT = parser.symbolTable.getType("boolean");
         :}
         | AndExpression:t1
@@ -440,34 +189,6 @@ AndExpression ::= AndExpression:t1 AND RelExpression:t2
             }
             RESULT = parser.symbolTable.getType("boolean");
         :}
-        | AndExpression:t1 AND error
-        {:
-            if ( t1.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Levi operand nije tipa boolean." );
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje relacioni izraz.");
-            parser.errNo++;
-
-            RESULT = parser.symbolTable.getType("boolean");
-        :}
-        | AndExpression:t1 error
-        {:
-            if ( t1.tkind != Type.BOOLEAN )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Levi operand nije tipa boolean." );
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje 'and' izmedju izraza.");
-            parser.errNo++;
-
-            RESULT = parser.symbolTable.getType("boolean");
-        :}
         | RelExpression:t1
         {:
             RESULT = t1;
@@ -487,35 +208,7 @@ RelExpression ::= Term:t1 RelOp Term:t2
                     "Desni operand nije aritmetickog tipa." );
             }
             RESULT = parser.symbolTable.getType("boolean");
-        :}
-        | Term:t1 RelOp error
-        {:
-            if ( t1.tkind != Type.INTEGER && t1.tkind != Type.REAL )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Levi operand nije aritmetickog tipa." );
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje izraz.");
-            parser.errNo++;
-
-            RESULT = parser.symbolTable.getType("boolean");
-        :}
-        | Term:t1 error
-        {:
-            if ( t1.type.tkind != Type.INTEGER && t1.type.tkind != Type.REAL )
-            {
-                System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                    "Levi operand nije aritmetickog tipa." );
-            }
-
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje relacioni operator.");
-            parser.errNo++;
-
-            RESULT = parser.symbolTable.getType("boolean");
-        :}
+        :}        
         | Term:t1
         {:
             RESULT = t1;
@@ -558,22 +251,6 @@ Term ::= ID:id
         | LEFTPAR Expression:ex RIGHTPAR
         {:
             RESULT = ex;
-        :}
-        | LEFTPAR Expression:ex error
-        {:
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje desna zagrada na kraju.");
-            parser.errNo++;
-
-            RESULT = ex;
-        :}
-        | LEFTPAR error
-        {:
-            System.out.println( "Greska u liniji " + parser.getLine() + ": " + 
-                "Nedostaje izraz.");
-            parser.errNo++;
-
-            RESULT = parser.symbolTable.getType("unknown");
         :}
         ;
 

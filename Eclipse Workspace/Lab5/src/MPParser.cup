@@ -110,6 +110,9 @@ NameList ::= NameList:arr COMMA ID:id
 		   System.out.println( "Redukcija 6: NameList ::= NameList , ID" );
 		   RESULT = arr;
 		   RESULT.add( id );
+           for(int i=0;i<arr.size();i++) {
+                 System.out.println( arr.get(i));
+           }
 		:}
 		| ID:id
 		{:

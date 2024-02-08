@@ -1,0 +1,215 @@
+1. CUP
+
+public class Parameter {
+    public String name;
+    public Type type;
+    public Object value;
+
+    // konstruktor
+}
+
+terminal String id;
+terminal Integer INTCONST;
+terminal Double REALCONST;
+terminal Character CHARCONST;
+
+non terminal Parameter Argument;
+non terminal ArrayList ArgumentList;
+non terminal Type _Type;
+non terminal Constant Const;
+
+ArgumentList ::= Argument:a
+        {:
+            RESULT = new ArrayList();
+            RESULT.add(a);
+        :}
+        | ArgumentList:arr, Argument:a
+        {:
+            int length = arr.size();
+            for(int i = 0; i < length; i++) {
+                Parameter par = arr.get(i);
+                if(par.name == a.name) {
+                    System.out.println("Ime " + a.name + " vec postoji kao ime parametra");
+                }
+            }
+            if (arr.get(length - 1).value != null && a.value == null) {
+                System.out.println("Prvi argument koji ima podrazumevanu vrednost, svi posle mora da imaju podrazumevanu vrednost");
+            }
+            RESULT = arr;
+            RESULT.add(a);
+        :};
+
+Argument ::= _Type:t id:i 
+        {:
+            RESULT = new Parameter(i, t, null);
+        :}
+        | _Type:t id:i = Const:c
+        {:
+            if(t.tkind != c.Type.tkind) {
+                System.out.println("Tip konstante i definisani tip parametra se ne poklapaju");
+            }
+            RESULT = new Parameter(i, t, c.value);
+        :}
+
+_Type ::= _Type:t *
+        {:
+            RESULT = t;
+        :}
+        | id:i
+        {:
+            Type t = parser.symbolTable.getType(i);
+            if (t == null) {
+                System.out.println("Tip " + i + " ne postoji kao definisan");
+            }
+            else {
+                RESULT = t;
+            }
+        :};
+
+Const ::= INTCONST:c 
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("integer", c));
+        :}
+        | CHARCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("char", c));
+        :}
+        | REALCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("double", c));
+        :};
+
+2. medjukod 
+DoWhile -> do StatementList while (Expression)
+Statement -> BreakStatement| ContinueStatement| ...
+
+public class BreakStatement extends Statement {
+    private String endLabel;
+
+    // konstruktor
+
+    public setEndLabel(String label) {
+        this.endLabel = label;
+    }
+
+    @Override
+    public void translate(BufferedWriter out) {
+        out.write("\tJump\t + " endLabel);
+        out.newLine();
+    }
+}
+
+public class ContinueStatement extends Statement {
+    private String loopLabel;
+
+    // konstruktor
+
+    public setLoopLabel(String label) {
+        this.loopLabel = label;
+    }
+
+    @Override
+    public void translate(BufferedWriter out) {
+        out.write("\tJump\t + " loopLabel);
+        out.newLine();
+    }
+}
+
+public class DoWhile extends Statement {
+    private ArrayList<Statement> statements;
+    private Expression e;
+
+    // konstruktor
+
+    @Override
+    public void translate(BufferedWriter out) {
+        String loopLabel = ASTNode.genLab();
+        String endLabel = ASTNode.genLab();
+
+        // lista naredbi barem jednom
+        for (Statement s: statements) {
+            s.translate(out);
+            if(s instanceof BreakStatement) {
+                s.setEndLabel(endLabel);
+                break;
+            }
+            else if(s instanceof ContinueStatement) {
+                s.setLoopLabel(loopLabel);
+                continue;
+            }
+        }
+
+        out.write(loopLabel + ":");
+        out.newLine();
+        e.translate(out);
+        e.genLoad("R1", out);
+        out.write("\tJumpIfZero\t " + endLabel);
+        if(e.result != "0") {
+            for (Statement s: statements) { 
+                s.translate(out);
+                if(s instanceof BreakStatement) {
+                    s.setEndLabel(endLabel);
+                    break;
+                }
+                else if(s instanceof ContinueStatement) {
+                    s.setLoopLabel(loopLabel);
+                    continue;
+                }
+            }
+        }
+
+        out.write(endLabel + ":");
+        out.newLine();
+    }
+}
+
+3. generisanje koda
+struct task
+id --- 0
+type - 2
+next - 4
+
+aktivacioni slog 
+rezultat <---- BP + 4
+t <---- BP + 2 
+adresa povratka <---- BP 
+staro BP <---- BP - 2 
+res <---- SP <---- BP - 4
+
+PUSH BP
+MOV BP, SP
+SUB SP, 2 
+
+MOV BX, [BP + 2] --- u BX t
+MOV AX, [BX + 2]
+CMP AX, 1
+JNE next 
+
+MOV AX, [BX] 
+PUSH AX 
+CALL validate_task
+ADD SP, 2
+
+MOV AX, [BP - 4]
+ADD AX, CX
+MOV [BP - 4], AX
+
+next:
+MOV AX, [BX + 4] --- u AX t->next
+CMP AX, 0
+JE end 
+PUSH AX -- za rezultat
+PUSH AX -- za t->next
+CALL calculate_tasks
+ADD SP, 2
+POP DX --- rezultat poziva funkcije
+MOV AX, [BP - 4] --- res
+MUL DX 
+MOV [BP - 4], AX
+
+end:
+MOV AX, [BP - 4]
+MOV [BP + 4], AX
+MOV SP, BP
+POP BP
+RET

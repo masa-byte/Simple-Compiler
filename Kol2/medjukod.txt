@@ -1,0 +1,268 @@
+januar 2016.
+
+CondStatement → Statement if Expression  │ Statement unless Expression
+
+medjukod:
+
+if slucaj:
+IMC<exp>
+Load_Mem R1, RESULT<exp>
+JumpIfZero R1, end
+IMC<s>
+end: 
+...
+
+unless slucaj:
+IMC<exp>
+Load_Mem R1, RESULT<exp>
+JumpIfNotZero R1, end
+IMC<s>
+end:
+...
+
+import java.io.*
+
+public class CondStatement extends Statement {
+	private Expression condition;
+	private Statement statement;
+	private boolean ifUnless; // true for if, false for unless
+	
+	public CondStatement(Expression e, Statement s, boolean _ifUnless) {
+		this.condition = e;
+		this.statement = s;
+		this.ifUnless = _ifUnless;
+	}
+	
+	@Override
+	public void translate(BufferedWriter out) throws IOException {
+		condition.translate(out);
+		condition.genLoad("R1", out);
+		String endLabel = ASTNode.genLab();
+		if (ifUnless == true) {
+			out.write("\tJumpIfZero\t R1, " + endLabel)
+		}
+		else {
+			out.write("\tJumpIfNotZero\t R1, " + endLabel)
+		}
+		out.newLine();
+		statement.translate(out);
+		out.write(endLabel + ":\n");
+		...
+	}
+}
+
+jun 2008.
+
+ForStatement → FOR ID = Expression TO Expression DO Statement 
+
+medjukod:
+
+IMC<ex1>
+IMC<ex2>
+Load_Mem R1, RESULT<ex1>
+Store R1, id.name
+
+loop:
+Load_Mem R2, RESULT<ex2>
+Compare_Less R1, R2
+JumpIfZero R1, end
+IMC<s>
+Load_Mem R1, id.name
+Load_Const R3, 1
+Add R1, R3
+Store R1, id.name
+Jump loop
+
+end:
+...
+
+public class ForStatement extends Statement {
+	private Expression exp1;
+	private Expression exp2;
+	private Statement s;
+	private Variable id;
+
+	public ForStatement(Expression _exp1, Expression _exp2, Statement _s, Variable _id) {
+		this.exp1 = _exp1;
+		this.ex2 = _exp2;
+		this.s = _s;
+		this.id = _id;
+	}
+
+	@Override
+	public void translate(BufferedWriter out) throws IOException {
+		String loopLabel = ASTNode.genLab();
+		String endLabel = ASTNode.genLab();
+
+		exp1.translate(out);
+		exp2.translate(out);
+
+		exp1.genLoad("R1", out);
+		out.write("\tStore\t R1, " + id.name + "\n");
+
+		out.write(loopLabel + ":\n");
+
+		exp2.genLoad("R2", out);
+		out.write("\tCompare_Less\t R1, R2 \n");
+		out.write("\tJumpIfZero\t R1, " + endLabel + "\n")
+
+		s.translate(out);
+		out.write("\Load_Mem\t R1, " + id.name + "\n");
+		out.write("\Load_Const\t R3, 1 \n");
+
+		out.write("\Add\t R1, R3 \n");
+		out.write("\tStore\t R1, " + id.name + "\n");
+		out.write("\tJump\t " + loopLabel + ":\n");
+
+		out.write(endLabel + ":\n");
+	}
+}
+
+oktobar 2 2019.
+
+LoopStatement → loop StatementList end loop
+ExitStatement → exit when Expression ;
+
+medjukod:
+
+LoopStatement:
+loop:
+IMC<statements[0]>
+IMC<statements[1]>
+...
+IMC<statements[n-1]>
+Jump loop
+
+end:
+...
+
+ExitStatement:
+IMC<ex>
+Load_Mem R1, RESULT<ex>
+JumpIfNotZero end
+
+public class ExitStatement {
+	private Expression ex;
+	private String exitLabel;
+
+	public ExitStatement(Expression _ex, String _exitLabel) {
+		this.ex = _ex;
+		this.exitLabel = _exitLabel;
+	}
+
+	public setExitLabel(String _exitLabel) {
+		this.exitLabel = _exitLabel;
+	}
+
+	@Override
+	public void translate(BufferedWriter out) throws IOException {
+		ex.translate(out);
+		ex.genLoad("R1", out);
+		out.write("\tJumpIfNotZero\t R1, " + exitLabel);
+		out.newLine();
+	}
+}
+
+public class LoopStatement {
+	private ArrayList<Statement> statementList;
+
+	public LoopStatement(ArrayList<Statement> sl) {
+		this.statementList = sl;
+	}
+
+	@Override
+	public void translate(BufferedWriter out) throws IOException {
+		String loopLabel = ASTNode.genLab();
+		String endLabel = ASTNode.genLab();
+
+		out.write(loopLabel + ":");
+		out.newLine();
+
+		for(Statement s : statementList) {
+			if (s instanceof ExitStatement)
+				s.setExitLabel(endLabel);
+			s.translate(out);
+		}
+
+		this.exitS.translate(out);
+
+		out.write("\tJump\t" + loopLabel);
+		out.newLine();
+
+		out.write(endLabel + ":");
+		out.newLine();
+	}
+}
+
+decembar 2019.
+
+SelectExpression → select ( Expression , ExpressionList )
+
+medjukod:
+IMC<ex1>
+Load_Mem R1, RESULT<ex1>
+Load_Mem R2, 1 // addition with 1
+Load_Mem R3, 0 // counter
+
+next:
+Load_Mem R1, RESULT<ex1>
+Compare_Equal R1, R3
+Add R3, R2
+JumpIfZero R1, next
+
+IMC<expressions[R1]>
+Load_Mem R2, RESULT<expressions[R1]>
+Store R2, RESULT<SelectExpression>
+...
+
+public class SelectExpression {
+	private Expression ex1;
+	private ArrayList<Expression> exList;
+
+	public SelectExpression(Expression _ex1, ArrayList<Expression> _exList) {
+		this.ex1 = _ex1;
+		this.exList = _exList;
+	}
+
+	@Override
+	public void translate(BufferedWriter out) throws IOException {
+		String nextLabel = ASTNode.genLab();
+
+		ex1.translate(out);
+		
+		out.write("\tLoad_Mem\t R2, 1"); // addition
+		out.newLine();
+		out.write("\tLoad_Mem\t R3, 0"); // counter
+		out.newLine();
+
+		out.write(nextLabel + ":");
+		out.newLine();
+		ex1.genLoad("R1", out);
+
+		Integer i = 0;
+		Expression rightExpression = null;
+		for (Expression e : exList) {
+			out.write("\tCompare_Equal\t R1, R3");
+			out.newLine();
+			out.write("\tAdd\t R3, R2");
+			out.newLine();
+			out.write("\tJumpIfZero\t R1, " + nextLabel);
+			out.newLine();
+
+			if (ex1.result == i.toString()) {
+				rightExpression = e;
+				break;
+			}
+			i += 1;
+		}
+
+		rightExpression.translate(out);
+		rightExpression.genLoad("R2", out);
+
+		super.result = ASTNode.genVar();
+		out.write("\Store\t R2, " + super.result);
+		out.newLine();
+	}
+}
+
+

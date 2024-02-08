@@ -1,0 +1,85 @@
+
+// prosirenje klase Variable
+public class Variable extends SymbolNode {
+    public Arraylist<String> attributeNames;
+
+    public Variable(String name, Type type, SymbolNode next) {
+        super(name, SymbolNode.VARIABLE, type, next);
+    }
+
+    public Variable(String name, Type type, SymbolNode next, Arraylist<String> _attributeNames) {
+        super(name, SymbolNode.VARIABLE, type, next);
+
+        if(type.tkind == Types.STRUCTURE)
+            this.attributeNames = _attributeNames;
+    }
+}
+
+terminal String ID;
+terminal Integer INTCONST;
+terminal Double REALCONST;
+terminal Character CHARCONST;
+terminal LEFT_SQUARE_BRACKET, RIGHT_SQUARE_BRACKET;
+
+non terminal Constant Const;
+non terminal Variable Promenljiva, Izraz;
+
+Izraz ::= Promenljiva:p
+        {:
+            RESULT = p;
+        :}
+        | Const:c
+        {:
+            RESULT = new Variable(null, c.type, null);
+        :};
+
+Promenljiva ::= ID:id
+        {:
+            parser.symbolTable.addVar(id, null);
+            RESULT = parser.symbolTable.getVar(id);
+        :}
+        | ID:id.Promenljiva:p
+        {:
+            Variable var = parser.symbolTable.getVar(id);
+            if(var.type.tkind != Type.STRUCTURE) {
+                System.out.println("Operator . je primenljiv samo ukoliko se na levoj strani nalazi promenljiva strukturnog tipa.");
+            }
+            boolean found = false;
+            for (String s in var.attributeNames) {
+                if (s == p.name) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                System.out.println("Sa desne strane operatora . može da stoji samo ime nekog od članova strukture čijeg je tipa
+                                    promenljiva navedena sa leve strane operatora.");
+            }
+            RESULT = var.p;
+        :}
+        | ID:id [ Izraz:i ]
+        {:
+            Variable var = parser.symbolTable.getVar(id);
+            if(var.type.tkind != Type.ARR) {
+                System.out.println("Operator [] je primenljiv samo nad promenljivama tipa polja.");
+            }
+            if(i.type.tkind != Type.INTEGER) {
+                System.out.println("Indeks polja (izraz naveden izmedju uglastih zagrada) mora da bude celobrojnog tipa");
+            }
+
+            RESULT = var[i];
+        :};
+
+Const ::= INTCONST:c 
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("integer", c));
+        :}
+        | CHARCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("char", c));
+        :}
+        | REALCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("double", c));
+        :};
+

@@ -1,0 +1,81 @@
+
+public class EnumConst extends SymbolNode {
+    public String name;
+    public Object value;
+
+    public EnumConst(String n, Object v) {
+        super(n, SymbolNode.VARIABLE, null, null);
+        this.name = n;
+        this.value = v;
+    }
+}
+
+terminal String ID;
+terminal Integer INTCONST;
+terminal Double REALCONST;
+terminal Character CHARCONST;
+
+non terminal Constant Const;
+non terminal ArrayList ElementList;
+non terminal EnumConst Element;
+non terminal EnumType;
+
+EnumType ::= enum ID { ElementList }
+            {:
+            
+            :};
+
+ElementList ::= Element:e
+            {:
+                RESULT = new ArrayList();
+                RESULT.add(e);
+            :}
+            | Element:e, ElementList:arr
+            {:
+                int length = arr.size();
+                if(arr.get(0).value == null) {
+                    arr.get(0).value = 0;
+                }
+                for(int i = 0; i < length; i++) {
+                    EnumConst var = arr.get(i);
+                    if(var.name == e.name) {
+                        System.out.println("Ime " + e.name + " vec postoji kao ime enum konstante");
+                    }
+                    if(var.value == null) {
+                        arr.get(i).value = arr.get(i - 1).value + 1;
+                    }
+                }
+
+                for(int i = 0; i < length; i++) {
+                    for(int j = i + 1; j < length; j++) {
+                        if (arr.get(i).value = arr.get(j).value + 1) {
+                            System.out.println("Enum konstante " + arr.get(i).name + " " + arr.get(j).name + " imaju istu vrednost");
+                        }
+                    }
+                }
+                
+                RESULT = arr;
+                arr.add(e);
+            :};
+
+Element ::= ID:id 
+            {:
+                RESULT = new EnumConst(id, null);
+            :}
+            | ID:id = CONST:c
+            {:
+                RESULT = new EnumConst(id, c.value);
+            :};
+
+Const ::= INTCONST:c 
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("integer", c));
+        :}
+        | CHARCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("char", c));
+        :}
+        | REALCONST:c
+        {:
+            RESULT = new Constant(parser.symbolTable.getType("double", c));
+        :};
